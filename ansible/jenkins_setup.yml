@@ -1,0 +1,58 @@
+---
+- name: Configure Jenkins Server
+  hosts: jenkins
+  become: yes
+
+  tasks:
+    - name: Install Java, Docker and prerequisites
+      apt:
+        name:
+          - openjdk-21-jre
+          - fontconfig
+          - docker.io
+          - curl
+          - ca-certificates
+          - gnupg
+        state: present
+        update_cache: yes
+
+    - name: Download Jenkins repository signing key
+      get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+        mode: '0644'
+
+    - name: Add Jenkins repository
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        filename: jenkins
+        state: present
+        update_cache: yes
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Start and enable Jenkins
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    - name: Add Jenkins user to Docker group
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+
+    - name: Restart Jenkins for Docker group membership
+      systemd:
+        name: jenkins
+        state: restarted
